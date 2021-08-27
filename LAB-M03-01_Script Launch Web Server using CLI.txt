@@ -1,0 +1,63 @@
+Section 1: Obtain the AMI Id to use
+# Set the Region
+AZ=`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone`
+export AWS_DEFAULT_REGION=${AZ::-1}
+# Obtain the latest Linux AMI
+AMI=$(aws ssm get-parameters --names /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2 --query 'Parameters[0].[Value]' --output text)
+echo $AMI
+# end
+
+Section 2: Obtain the Subnet Id to use
+# Obtain the subnet Id
+SUBNET=$(aws ec2 describe-subnets --filters 'Name=tag:Name,Values=Public Subnet' --query Subnets[].SubnetId --output text)
+echo $SUBNET
+# end
+
+Section 3: Obtain the Security Group Id to use
+# Obtain the security group Id
+SG=$(aws ec2 describe-security-groups --filters Name=group-name,Values=WebSecurityGroup --query SecurityGroups[].GroupId --output text)
+echo $SG
+# end
+
+Section 4: Download a User Data script
+# Download the user data script
+wget https://raw.githubusercontent.com/ahmadzahoory/awssysops/master/lab-01-l-script.txt
+# end
+
+Section 5: View the User Data script content
+# View the user data script content
+cat lab-01-l-script.txt
+# end
+
+Section 6: Launch the Instance
+# Launch the instance
+INSTANCE=$(\
+aws ec2 run-instances \
+--image-id $AMI \
+--subnet-id $SUBNET \
+--security-group-ids $SG \
+--user-data file:///home/ec2-user/lab-01-l-script.txt \
+--instance-type t2.micro \
+--tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=Linux Web Server}]' \
+--key-name My-SysOps-LAB-KP \
+--query 'Instances[*].InstanceId' \
+--output text \
+)
+echo $INSTANCE
+# end
+
+Section 7: Describe the details of the instance
+# Describe the instance details
+aws ec2 describe-instances --instance-ids $INSTANCE
+# end
+
+Section 8: Monitor the state of the instance
+# Describe the instance state
+aws ec2 describe-instances --instance-ids $INSTANCE --query 'Reservations[].Instances[].State.Name' --output text
+# end
+
+Section 9: Get the DNS name, Private and Public Ip Address of the instance
+# Describe the instance dns & Ip address
+aws ec2 describe-instances --instance-ids $INSTANCE --query Reservations[].Instances[].[PublicDnsName,PrivateIpAddress,PublicIpAddress] --output text
+# end
+
